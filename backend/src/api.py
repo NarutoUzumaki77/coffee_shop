@@ -1,7 +1,6 @@
-import os
+
 from flask import Flask, request, jsonify, abort
 from sqlalchemy import exc
-import json
 from flask_cors import CORS
 
 from .database.models import db_drop_and_create_all, setup_db, Drink, db
@@ -43,51 +42,78 @@ def get_drinks():
         abort(400)
 
 
-'''
-@TODO implement endpoint
-    GET /drinks-detail
-        it should require the 'get:drinks-detail' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drinks} where 
-    drinks is the list of drinks
-        or appropriate status code indicating reason for failure
-'''
+# Todo it should require the 'get:drinks-detail' permission
+@app.route('/drinks-detail')
+def get_drinks_detail():
+    """
+    get all drinks in the drink.short() format
+    :return:
+    """
+    try:
+        drinks = db.session.query(Drink).all()
+        long_format = [drink.long() for drink in drinks]
+        return jsonify({
+            "success": True,
+            "drinks": long_format
+        }), 200
+    except Exception as err:
+        logging.error(err)
+        abort(400)
 
-'''
-@TODO implement endpoint
-    POST /drinks
-        it should create a new row in the drinks table
-        it should require the 'post:drinks' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drink} where 
-    drink an array containing only the newly created drink
-        or appropriate status code indicating reason for failure
-'''
 
-'''
-@TODO implement endpoint
-    PATCH /drinks/<id>
-        where <id> is the existing model id
-        it should respond with a 404 error if <id> is not found
-        it should update the corresponding row for <id>
-        it should require the 'patch:drinks' permission
-        it should contain the drink.long() data representation
-    returns status code 200 and json {"success": True, "drinks": drink} where 
-    drink an array containing only the updated drink
-        or appropriate status code indicating reason for failure
-'''
+# Todo it should require the 'post:drinks' permission
+# Todo it should contain the drink.long() data representation
+@app.route('/drinks', methods=['POST'])
+def create_drink():
+    try:
+        request_body = request.json
+        drink = Drink(request_body.get('title'), request_body.get('recipe'))
+        drink.insert()
+        return jsonify({
+            "success": True,
+            "drinks": drink.long()
+        }), 200
+    except Exception as err:
+        logging.error(err)
+        abort(422)
 
-'''
-@TODO implement endpoint
-    DELETE /drinks/<id>
-        where <id> is the existing model id
-        it should respond with a 404 error if <id> is not found
-        it should delete the corresponding row for <id>
-        it should require the 'delete:drinks' permission
-    returns status code 200 and json {"success": True, "delete": id} where id 
-    is the id of the deleted record
-        or appropriate status code indicating reason for failure
-'''
+
+# Todo  it should require the 'patch:drinks' permission
+# Todo it should contain the drink.long() data representation
+@app.route('/drinks/<int:drink_id>', methods=['PATCH'])
+def patch_drink(drink_id):
+    try:
+        drink = db.session.query(Drink).get(drink_id)
+        if drink is None:
+            return abort(404)
+        request_body = request.json
+        title = request_body.get('title')
+        recipe = request_body.get('recipe')
+        drink.title = title
+        drink.recipe = recipe
+        drink.update()
+        return jsonify({
+            "success": True,
+            "drinks": drink.long()
+        })
+    except Exception as err:
+        logging.error(err)
+        abort(422)
+
+
+# Todo it should require the 'delete:drinks' permission
+@app.route('/drinks/<int:drink_id>', methods=['DELETE'])
+def delete_drink(drink_id):
+    try:
+        drink = db.session.query(Drink).get(drink_id)
+        drink.delete()
+        return jsonify({
+            'success': True,
+            'delete': drink_id
+        }), 200
+    except Exception as err:
+        logging.error(err)
+        abort(404)
 
 
 @app.errorhandler(422)
