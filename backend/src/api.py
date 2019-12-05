@@ -1,11 +1,10 @@
 
 from flask import Flask, request, jsonify, abort
-from sqlalchemy import exc
 from flask_cors import CORS
 
 from .database.models import db_drop_and_create_all, setup_db, Drink, db
 from .auth.auth import AuthError, requires_auth
-from logger import logging
+from .logger import logging
 
 app = Flask(__name__)
 setup_db(app)
@@ -42,8 +41,8 @@ def get_drinks():
         abort(400)
 
 
-# Todo it should require the 'get:drinks-detail' permission
 @app.route('/drinks-detail')
+@requires_auth('get:drinks-detail')
 def get_drinks_detail():
     """
     get all drinks in the drink.short() format
@@ -61,9 +60,9 @@ def get_drinks_detail():
         abort(400)
 
 
-# Todo it should require the 'post:drinks' permission
 # Todo it should contain the drink.long() data representation
 @app.route('/drinks', methods=['POST'])
+@requires_auth('post:drinks')
 def create_drink():
     try:
         request_body = request.json
@@ -78,9 +77,9 @@ def create_drink():
         abort(422)
 
 
-# Todo  it should require the 'patch:drinks' permission
 # Todo it should contain the drink.long() data representation
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
+@requires_auth('patch:drinks')
 def patch_drink(drink_id):
     try:
         drink = db.session.query(Drink).get(drink_id)
@@ -101,8 +100,8 @@ def patch_drink(drink_id):
         abort(422)
 
 
-# Todo it should require the 'delete:drinks' permission
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
+@requires_auth('delete:drinks')
 def delete_drink(drink_id):
     try:
         drink = db.session.query(Drink).get(drink_id)
@@ -170,10 +169,17 @@ def server_error(error):
     }), 500
 
 
-'''
-@TODO implement error handler for AuthError
-    error handler should conform to general task above 
-'''
+@app.errorhandler(AuthError)
+def auth_error(error):
+    msg = error.args
+    message = msg[0]
+    status_code = msg[1]
+    return jsonify({
+        "success": False,
+        "error": status_code,
+        "message": message.get('description')
+    }), status_code
+
 
 # Default port:
 if __name__ == '__main__':
