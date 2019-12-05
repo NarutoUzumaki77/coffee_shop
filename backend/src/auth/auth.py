@@ -45,6 +45,7 @@ def get_token_auth_header():
         abort(401)
 
     token = parts[1]
+    logging.info("Token was retrieved successfully")
     return token
 
 
@@ -53,12 +54,15 @@ def check_permission(permission, payload):
         abort(403)
     if permission not in payload['permissions']:
         abort(403)
+    logging.info("successfully checked permission")
     return True
 
 
 def verify_decode_jwt(token):
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
+    logging.info(jsonurl)
     jwks = json.loads(jsonurl.read())
+    logging.info(jwks)
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
     if 'kid' not in unverified_header:
@@ -84,7 +88,7 @@ def verify_decode_jwt(token):
                 audience=API_AUDIENCE,
                 issuer='https://' + AUTH0_DOMAIN + '/'
             )
-
+            logging.info("payload was retrieved successfully")
             return payload
 
         except jwt.ExpiredSignatureError:
@@ -118,7 +122,7 @@ def requires_auth(permission=''):
 
             check_permission(permission, payload)
 
-            return func(payload, *args, **kwargs)
+            return func(*args, **kwargs)
 
         return wrapper
 
