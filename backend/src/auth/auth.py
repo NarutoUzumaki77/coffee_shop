@@ -1,5 +1,5 @@
 import json
-from flask import request, _request_ctx_stack, abort
+from flask import request, abort
 from functools import wraps
 from jose import jwt
 from urllib.request import urlopen
@@ -17,32 +17,35 @@ class AuthError(Exception):
         self.status_code = status_code
 
 
-# Todo it should raise an AuthError if the header is malformed
 def get_token_auth_header():
     """
     Obtains the Access Token from the Authorization Header
     """
     auth = request.headers.get('Authorization', None)
     if not auth:
-        logging.info('authorization_header_missing')
-        logging.info('Authorization header is expected.')
-        return abort(401)
+        raise AuthError({
+            'code': 'authorization_header_missing',
+            'description': 'Authorization header is expected.'
+        }, 401)
 
     parts = auth.split()
     if parts[0].lower() != 'bearer':
-        logging.info('invalid_header')
-        logging.info('Authorization header must start with "Bearer".')
-        return abort(401)
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'Authorization header must start with "Bearer".'
+        }, 401)
 
     elif len(parts) == 1:
-        logging.info('invalid_header')
-        logging.info('Token not found.')
-        return abort(401)
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'Token not found.'
+        }, 401)
 
     elif len(parts) > 2:
-        logging.info('invalid_header')
-        logging.info('Authorization header must be bearer token.')
-        abort(401)
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'Authorization header must be bearer token.'
+        }, 401)
 
     token = parts[1]
     logging.info("Token was retrieved successfully")
@@ -60,15 +63,14 @@ def check_permission(permission, payload):
 
 def verify_decode_jwt(token):
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
-    logging.info(jsonurl)
     jwks = json.loads(jsonurl.read())
-    logging.info(jwks)
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
     if 'kid' not in unverified_header:
-        logging.info('invalid_header')
-        logging.info('Authorization malformed.')
-        return abort(401)
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'Authorization malformed.'
+        }, 401)
 
     for key in jwks['keys']:
         if key['kid'] == unverified_header['kid']:
@@ -92,22 +94,27 @@ def verify_decode_jwt(token):
             return payload
 
         except jwt.ExpiredSignatureError:
-            logging.info('token_expired')
-            logging.info('Token expired.')
-            return abort(401)
+            raise AuthError({
+                'code': 'token_expired',
+                'description': 'Token expired.'
+            }, 401)
 
         except jwt.JWTClaimsError:
-            logging.info('invalid_claims')
-            logging.info('Incorrect claims. Please, check the audience '
-                         'and issuer.')
-            return abort(401)
+            raise AuthError({
+                'code': 'invalid_claims',
+                'description': 'Incorrect claims. Please, check the audience and issuer.'
+            }, 401)
+
         except Exception:
-            logging.info('invalid_header')
-            logging.info('Unable to parse authentication token.')
-            return abort(401)
-    logging.info('invalid_header')
-    logging.info('Unable to find the appropriate key.')
-    return abort(400)
+            raise AuthError({
+                'code': 'invalid_header',
+                'description': 'Unable to parse authentication token.'
+            }, 401)
+
+    raise AuthError({
+        'code': 'invalid_header',
+        'description': 'Unable to find the appropriate key.'
+    }, 400)
 
 
 def requires_auth(permission=''):

@@ -1,6 +1,5 @@
 
 from flask import Flask, request, jsonify, abort
-from sqlalchemy import exc
 from flask_cors import CORS
 
 from .database.models import db_drop_and_create_all, setup_db, Drink, db
@@ -170,10 +169,17 @@ def server_error(error):
     }), 500
 
 
-'''
-@TODO implement error handler for AuthError
-    error handler should conform to general task above 
-'''
+@app.errorhandler(AuthError)
+def auth_error(error):
+    msg = error.args
+    message = msg[0]
+    status_code = msg[1]
+    return jsonify({
+        "success": False,
+        "error": status_code,
+        "message": message.get('description')
+    }), status_code
+
 
 # Default port:
 if __name__ == '__main__':
