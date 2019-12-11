@@ -116,6 +116,7 @@ export class DrinksService {
         }
       });
     } else { // insert
+      console.log(drink)
       this.http.post(this.url + '/drinks', drink, this.getHeaders())
       .subscribe( (res: any) => {
         if (res.success) {
