@@ -4,7 +4,6 @@ import json
 
 from .database.models import db_drop_and_create_all, setup_db, Drink, db
 from .auth.auth import AuthError, requires_auth
-from .logger import logging
 
 app = Flask(__name__)
 setup_db(app)
@@ -29,40 +28,36 @@ def get_drinks():
     get all drinks in the drink.short() format
     :return:
     """
-    try:
-        drinks = db.session.query(Drink).all()
-        short_format = [drink.short() for drink in drinks]
-        return jsonify({
-            "success": True,
-            "drinks": short_format
-        }), 200
-    except Exception as err:
-        logging.error(err)
-        abort(400)
+    drinks = db.session.query(Drink).all()
+    short_format = [drink.short() for drink in drinks]
+    return jsonify({
+        "success": True,
+        "drinks": short_format
+    }), 200
 
 
 @app.route('/drinks-detail')
 @requires_auth('get:drinks-detail')
 def get_drinks_detail():
     """
-    get all drinks in the drink.short() format
+    get all drinks in the drink.long() format
     :return:
     """
-    try:
-        drinks = db.session.query(Drink).all()
-        long_format = [drink.long() for drink in drinks]
-        return jsonify({
-            "success": True,
-            "drinks": long_format
-        }), 200
-    except Exception as err:
-        logging.error(err)
-        abort(400)
+    drinks = db.session.query(Drink).all()
+    long_format = [drink.long() for drink in drinks]
+    return jsonify({
+        "success": True,
+        "drinks": long_format
+    }), 200
 
 
 @app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
 def create_drink():
+    """
+    creates a new drink
+    :return:
+    """
     request_body = request.json
     recipe = str(request_body.get('recipe'))
     title = str(request_body.get('title'))
@@ -81,6 +76,11 @@ def create_drink():
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
 def patch_drink(drink_id):
+    """
+    updates drink record
+    :param drink_id:
+    :return:
+    """
     drink = db.session.query(Drink).get(drink_id)
     if drink is None:
         return abort(404)
@@ -103,16 +103,19 @@ def patch_drink(drink_id):
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
 def delete_drink(drink_id):
-    try:
-        drink = db.session.query(Drink).get(drink_id)
-        drink.delete()
-        return jsonify({
-            'success': True,
-            'delete': drink_id
-        }), 200
-    except Exception as err:
-        logging.error(err)
+    """
+    delete drink record
+    :param drink_id:
+    :return:
+    """
+    drink = db.session.query(Drink).get(drink_id)
+    if drink is None:
         abort(404)
+    drink.delete()
+    return jsonify({
+        'success': True,
+        'delete': drink_id
+    }), 200
 
 
 @app.errorhandler(422)
