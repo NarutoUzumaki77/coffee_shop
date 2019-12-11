@@ -113,9 +113,11 @@ export class DrinksService {
       .subscribe( (res: any) => {
         if (res.success) {
           this.drinksToItems(res.drinks);
+          this.getDrinks();
         }
       });
     } else { // insert
+      console.log(drink)
       this.http.post(this.url + '/drinks', drink, this.getHeaders())
       .subscribe( (res: any) => {
         if (res.success) {

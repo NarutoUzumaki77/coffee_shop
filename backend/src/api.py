@@ -1,6 +1,6 @@
-
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
+import json
 
 from .database.models import db_drop_and_create_all, setup_db, Drink, db
 from .auth.auth import AuthError, requires_auth
@@ -60,44 +60,44 @@ def get_drinks_detail():
         abort(400)
 
 
-# Todo it should contain the drink.long() data representation
 @app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
 def create_drink():
-    try:
-        request_body = request.json
-        drink = Drink(request_body.get('title'), request_body.get('recipe'))
-        drink.insert()
-        return jsonify({
-            "success": True,
-            "drinks": drink.long()
-        }), 200
-    except Exception as err:
-        logging.error(err)
-        abort(422)
+    request_body = request.json
+    recipe = str(request_body.get('recipe'))
+    title = str(request_body.get('title'))
+    recipe = recipe.replace("\'", "\"")
+    val_recipe = json.loads(recipe)
+    if not validate_long_format(val_recipe):
+        abort(400)
+    drink = Drink(title, recipe)
+    drink.insert()
+    return jsonify({
+        "success": True,
+        "drinks": drink.long()
+    }), 200
 
 
-# Todo it should contain the drink.long() data representation
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
 def patch_drink(drink_id):
-    try:
-        drink = db.session.query(Drink).get(drink_id)
-        if drink is None:
-            return abort(404)
-        request_body = request.json
-        title = request_body.get('title')
-        recipe = request_body.get('recipe')
-        drink.title = title
-        drink.recipe = recipe
-        drink.update()
-        return jsonify({
-            "success": True,
-            "drinks": drink.long()
-        })
-    except Exception as err:
-        logging.error(err)
-        abort(422)
+    drink = db.session.query(Drink).get(drink_id)
+    if drink is None:
+        return abort(404)
+    request_body = request.json
+    recipe = str(request_body.get('recipe'))
+    title = str(request_body.get('title'))
+    recipe = recipe.replace("\'", "\"")
+    val_recipe = json.loads(recipe)
+    if not validate_long_format(val_recipe):
+        abort(400)
+    drink.title = title
+    drink.recipe = recipe
+    drink.update()
+    return jsonify({
+        "success": True,
+        "drinks": drink.long()
+    })
 
 
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
@@ -179,6 +179,15 @@ def auth_error(error):
         "error": status_code,
         "message": message.get('description')
     }), status_code
+
+
+def validate_long_format(_dict):
+    keys = ["name", "color", "parts"]
+    for key in keys:
+        for data in _dict:
+            if key not in data.keys():
+                return False
+    return True
 
 
 # Default port:
